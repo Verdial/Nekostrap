@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        abi: [armeabi-v7a, arm64-v8a, x86, x86_64]
 
     steps:
       - name: Checkout repo
@@ -16,7 +19,7 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake make unzip wget
+          sudo apt-get install -y ninja-build cmake make unzip wget zip
 
       - name: Download Android NDK
         run: |
@@ -27,16 +30,36 @@ jobs:
       - name: Configure CMake
         run: |
           cmake -B build -S . \
-            -DANDROID_ABI="armeabi-v7a;arm64-v8a" \
+            -DANDROID_ABI=${{ matrix.abi }} \
             -DANDROID_PLATFORM=android-21 \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-            -G "Unix Makefiles"
+            -G Ninja
 
       - name: Build
         run: cmake --build build --target nekostrap -- -j4
 
-      - name: Upload artifact
+      - name: Upload artifact per ABI
         uses: actions/upload-artifact@v4
         with:
-          name: nekostrap-libs
+          name: nekostrap-${{ matrix.abi }}
           path: build/**/*.so
+
+  package:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: libs
+
+      - name: Create universal zip
+        run: |
+          mkdir -p output
+          zip -r output/nekostrap-libs.zip libs
+
+      - name: Upload final zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: nekostrap-universal
+          path: output/nekostrap-libs.zip
