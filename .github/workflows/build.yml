@@ -16,7 +16,7 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build cmake unzip wget
+          sudo apt-get install -y cmake make unzip wget
 
       - name: Download Android NDK
         run: |
@@ -30,10 +30,10 @@ jobs:
             -DANDROID_ABI="armeabi-v7a;arm64-v8a" \
             -DANDROID_PLATFORM=android-21 \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-            -G Ninja
+            -G "Unix Makefiles"
 
       - name: Build
-        run: cmake --build build --target nekostrap
+        run: cmake --build build --target nekostrap -- -j4
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
