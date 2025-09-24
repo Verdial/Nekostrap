@@ -1,0 +1,34 @@
+name: Build NekoStrap
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Android NDK
+        uses: android-actions/setup-ndk@v2
+        with:
+          ndk-version: r26d
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -S . \
+            -DANDROID_ABI="armeabi-v7a;arm64-v8a" \
+            -DANDROID_PLATFORM=android-21 \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake
+
+      - name: Build .so
+        run: cmake --build build --target nekostrap
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nekostrap-libs
+          path: build/**/*.so
