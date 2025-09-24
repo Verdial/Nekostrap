@@ -1,8 +1,7 @@
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.6)
+project(nekostrap)
 
-project(nekostrap C)
-
-add_library(nekostrap SHARED nekostrap.c)
+add_library(nekostrap SHARED nekostrap.cpp)
 
 find_library(log-lib log)
 
