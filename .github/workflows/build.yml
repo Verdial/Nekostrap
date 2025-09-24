@@ -8,23 +8,36 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Install Android NDK
-        uses: android-actions/setup-ndk@v2
+      - name: Set up JDK
+        uses: actions/setup-java@v3
         with:
-          ndk-version: r26d
+          distribution: temurin
+          java-version: 17
+
+      - name: Install CMake & Ninja
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
+
+      - name: Download Android NDK
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r26d-linux.zip
+          unzip -q android-ndk-r26d-linux.zip -d $HOME
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r26d" >> $GITHUB_ENV
+          echo "PATH=$HOME/android-ndk-r26d:$PATH" >> $GITHUB_ENV
 
       - name: Configure CMake
         run: |
           cmake -B build -S . \
             -DANDROID_ABI="armeabi-v7a;arm64-v8a" \
             -DANDROID_PLATFORM=android-21 \
-            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake
+            -DCMAKE_TOOLCHAIN_FILE=$HOME/android-ndk-r26d/build/cmake/android.toolchain.cmake \
+            -G Ninja
 
-      - name: Build .so
+      - name: Build
         run: cmake --build build --target nekostrap
 
       - name: Upload artifact
