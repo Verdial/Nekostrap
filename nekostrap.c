@@ -1,35 +1,47 @@
 #include <jni.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <string>
+#include <fstream>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <android/log.h>
 
-// JNI method: copy file from src -> dst
-JNIEXPORT void JNICALL
-Java_com_nekostrap_NekoStrap_copySettings(JNIEnv *env, jobject thiz,
-                                          jstring jsrc, jstring jdst) {
-    const char *src = (*env)->GetStringUTFChars(env, jsrc, 0);
-    const char *dst = (*env)->GetStringUTFChars(env, jdst, 0);
+#define LOG_TAG "NekoStrap"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-    int inFd = open(src, O_RDONLY);
-    if (inFd < 0) {
-        // create empty file if not exist
-        int fd = open(src, O_CREAT | O_WRONLY, 0644);
-        if (fd >= 0) close(fd);
-        inFd = open(src, O_RDONLY);
+static void copyFile(const char* src, const char* dst) {
+    std::ifstream in(src, std::ios::binary);
+    if (!in.is_open()) {
+        LOGI("Source not found: %s", src);
+        return;
     }
 
-    int outFd = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (inFd >= 0 && outFd >= 0) {
-        char buf[4096];
-        ssize_t size;
-        while ((size = read(inFd, buf, sizeof(buf))) > 0) {
-            write(outFd, buf, size);
-        }
+    // buat folder tujuan kalau belum ada
+    std::string dstPath(dst);
+    size_t pos = dstPath.find_last_of('/');
+    if (pos != std::string::npos) {
+        std::string folder = dstPath.substr(0, pos);
+        mkdir(folder.c_str(), 0777);
     }
 
-    if (inFd >= 0) close(inFd);
-    if (outFd >= 0) close(outFd);
+    std::ofstream out(dst, std::ios::binary);
+    out << in.rdbuf();
 
-    (*env)->ReleaseStringUTFChars(env, jsrc, src);
-    (*env)->ReleaseStringUTFChars(env, jdst, dst);
+    in.close();
+    out.close();
+
+    LOGI("Copied: %s -> %s", src, dst);
+}
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    LOGI("NekoStrap JNI_OnLoad triggered");
+
+    const char* src = "/storage/emulated/0/Nekostrap/ClientAppSettings.json";
+    const char* dst = "/data/data/com.roblox.client/files/exe/ClientSettings/ClientAppSettings.json";
+
+    // buat folder Nekostrap di internal kalau belum ada
+    mkdir("/storage/emulated/0/Nekostrap", 0777);
+
+    copyFile(src, dst);
+
+    return JNI_VERSION_1_6;
 }
